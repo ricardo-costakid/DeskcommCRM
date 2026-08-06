@@ -9070,4 +9070,70 @@ alter table public.agent_inbox_items
     'other'
   ));
 
+-- ---- rag_bot vira mcp_agent com draft (migration 0106) ----
+-- Todo agente kind='rag_bot' é editado pela tela pré-EPIC-13, que grava em
+-- ai_agents.system_prompt/is_active — colunas que o runtime real
+-- (agent-engine) nunca lê (só ai_agent_versions via published_version_id).
+-- Cria uma draft nova com o system_prompt ATUAL do agente e vira kind para
+-- 'mcp_agent' (destrava o editor com draft/publish). NÃO publica — precisa de
+-- credencial BYOK validada (fn_publish_ai_agent_version recusa sem isso).
+-- Idempotente (só bate em kind='rag_bot'); auto-curativa (sem channel_session
+-- na org, pula e tenta de novo no próximo update.sh).
+with alvo as (
+  select
+    a.id as agent_id,
+    a.organization_id,
+    coalesce(
+      nullif(trim(a.system_prompt), ''),
+      'Você é um atendente. Responda de forma educada e clara, em pt-BR.'
+    ) as system_prompt,
+    coalesce(nullif(trim(a.model), ''), 'anthropic/claude-sonnet-4-6') as model,
+    a.created_by,
+    coalesce(
+      (select max(v.version_number) from public.ai_agent_versions v where v.agent_id = a.id),
+      0
+    ) + 1 as next_version_number,
+    (
+      select cs.id from public.channel_sessions cs
+      where cs.organization_id = a.organization_id
+      order by cs.created_at asc
+      limit 1
+    ) as channel_session_id
+  from public.ai_agents a
+  where a.kind = 'rag_bot'
+    and a.archived_at is null
+),
+elegivel as (
+  select * from alvo where channel_session_id is not null
+),
+inserido as (
+  insert into public.ai_agent_versions (
+    organization_id, agent_id, version_number, system_prompt,
+    provider, model, channel_session_id, status, created_by
+  )
+  select
+    e.organization_id,
+    e.agent_id,
+    e.next_version_number,
+    e.system_prompt,
+    case
+      when split_part(e.model, '/', 1) in ('anthropic', 'openai', 'google')
+        then split_part(e.model, '/', 1)
+      else 'anthropic'
+    end as provider,
+    case
+      when position('/' in e.model) > 0 then split_part(e.model, '/', 2)
+      else e.model
+    end as model,
+    e.channel_session_id,
+    'draft',
+    e.created_by
+  from elegivel e
+  returning agent_id
+)
+update public.ai_agents a
+   set kind = 'mcp_agent'
+  from inserido i
+ where a.id = i.agent_id;
+
 notify pgrst, 'reload schema';
