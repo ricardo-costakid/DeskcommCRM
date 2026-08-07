@@ -10,10 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signUp } from "@/app/actions/auth/signUp";
 
-export function SignupForm() {
+interface SignupFormProps {
+  /** Presente quando o cadastro veio de um link de convite já verificado. */
+  inviteToken?: string;
+  inviteEmail?: string;
+}
+
+export function SignupForm({ inviteToken, inviteEmail }: SignupFormProps) {
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const hasInvite = !!inviteToken;
 
   const {
     register,
@@ -21,7 +28,13 @@ export function SignupForm() {
     formState: { errors },
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { org_name: "", email: "", password: "", password_confirm: "" },
+    defaultValues: {
+      org_name: "",
+      email: inviteEmail ?? "",
+      password: "",
+      password_confirm: "",
+      invite_token: inviteToken,
+    },
   });
 
   const onSubmit = (values: SignupInput) => {
@@ -36,6 +49,8 @@ export function SignupForm() {
         setServerError("Muitas tentativas. Aguarde alguns minutos.");
       } else if (res.error === "validation_error") {
         setServerError("Dados inválidos. Confira os campos.");
+      } else if (res.error === "invite_invalid") {
+        setServerError("O convite expirou ou é inválido. Peça um novo ao admin.");
       } else {
         setServerError("Não foi possível criar a conta. Tente novamente.");
       }
@@ -59,26 +74,31 @@ export function SignupForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-      <div className="space-y-1.5">
-        <Label htmlFor="org_name">Nome da empresa</Label>
-        <Input
-          id="org_name"
-          type="text"
-          autoComplete="organization"
-          autoFocus
-          aria-invalid={errors.org_name ? true : undefined}
-          {...register("org_name")}
-        />
-        {errors.org_name && (
-          <p className="text-xs text-destructive">{errors.org_name.message}</p>
-        )}
-      </div>
+      <input type="hidden" {...register("invite_token")} />
+      {!hasInvite && (
+        <div className="space-y-1.5">
+          <Label htmlFor="org_name">Nome da empresa</Label>
+          <Input
+            id="org_name"
+            type="text"
+            autoComplete="organization"
+            autoFocus
+            aria-invalid={errors.org_name ? true : undefined}
+            {...register("org_name")}
+          />
+          {errors.org_name && (
+            <p className="text-xs text-destructive">{errors.org_name.message}</p>
+          )}
+        </div>
+      )}
       <div className="space-y-1.5">
         <Label htmlFor="email">Email</Label>
         <Input
           id="email"
           type="email"
           autoComplete="email"
+          autoFocus={hasInvite}
+          readOnly={hasInvite}
           aria-invalid={errors.email ? true : undefined}
           {...register("email")}
         />

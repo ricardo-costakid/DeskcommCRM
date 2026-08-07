@@ -56,7 +56,7 @@ export default async function LoginPage({
         <p className="text-muted-foreground">
           Não tem conta?{" "}
           <Link
-            href="/signup"
+            href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
             className="font-medium text-foreground underline underline-offset-4"
           >
             Criar conta

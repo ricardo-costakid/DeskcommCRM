@@ -12,9 +12,8 @@
  */
 import { redirect } from "next/navigation";
 
-import { audit } from "@/lib/audit";
 import { verifyInviteToken } from "@/lib/auth/invite-token";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { joinOrganizationFromInvite } from "@/lib/auth/accept-invite";
 import { createClient } from "@/lib/supabase/server";
 
 export type AcceptInviteResult =
@@ -37,66 +36,18 @@ export async function acceptInviteAction(token: string): Promise<AcceptInviteRes
     return { ok: false, error: "email_mismatch", expectedEmail: payload.email };
   }
 
-  // Reactivate or insert. RLS em user_organizations exige admin da org para
-  // INSERT/UPDATE (user_orgs_insert/update) — o convidado ainda NÃO é membro, então
-  // não pode se auto-inserir. A escrita da membership usa o service role. Autorização:
-  // token HMAC verificado + email do usuário autenticado === email do convite; org e
-  // role vêm do token assinado (fonte confiável), nunca do body.
-  const db = createAdminClient();
-  const { data: existing, error: fetchErr } = await db
-    .from("user_organizations")
-    .select("id, revoked_at")
-    .eq("user_id", user.id)
-    .eq("organization_id", payload.organization_id)
-    .maybeSingle();
-  if (fetchErr) {
-    return { ok: false, error: "internal_error", message: fetchErr.message };
-  }
-
-  const nowIso = new Date().toISOString();
-
-  if (existing?.id) {
-    const { error: updErr } = await db
-      .from("user_organizations")
-      .update({
-        role: payload.role,
-        revoked_at: null,
-        accepted_at: existing.revoked_at ? nowIso : (nowIso),
-        updated_at: nowIso,
-      })
-      .eq("id", existing.id);
-    if (updErr) return { ok: false, error: "internal_error", message: updErr.message };
-
-    await audit({
-      action: "member.accepted",
-      actorUserId: user.id,
-      organizationId: payload.organization_id,
-      resourceType: "membership",
-      resourceId: existing.id,
-      metadata: { invite_id: payload.invite_id, role: payload.role, reactivated: !!existing.revoked_at },
-    });
-  } else {
-    const { data: inserted, error: insErr } = await db
-      .from("user_organizations")
-      .insert({
-        user_id: user.id,
-        organization_id: payload.organization_id,
-        role: payload.role,
-        invited_at: new Date(payload.exp * 1000 - 24 * 60 * 60 * 1000).toISOString(),
-        accepted_at: nowIso,
-      })
-      .select("id")
-      .single();
-    if (insErr) return { ok: false, error: "internal_error", message: insErr.message };
-
-    await audit({
-      action: "member.accepted",
-      actorUserId: user.id,
-      organizationId: payload.organization_id,
-      resourceType: "membership",
-      resourceId: inserted.id,
-      metadata: { invite_id: payload.invite_id, role: payload.role },
-    });
+  // Autorização: token HMAC verificado + email do usuário autenticado === email
+  // do convite; org e role vêm do token assinado (fonte confiável), nunca do
+  // body. joinOrganizationFromInvite escreve com service role (RLS exige admin
+  // da org para INSERT/UPDATE, e o convidado ainda não é membro).
+  try {
+    await joinOrganizationFromInvite(user.id, payload);
+  } catch (e) {
+    return {
+      ok: false,
+      error: "internal_error",
+      message: e instanceof Error ? e.message : String(e),
+    };
   }
 
   redirect("/app/inbox");

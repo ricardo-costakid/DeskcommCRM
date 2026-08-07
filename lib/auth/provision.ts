@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
+import { verifyInviteToken } from "@/lib/auth/invite-token";
+import { joinOrganizationFromInvite } from "@/lib/auth/accept-invite";
 
 /** Normaliza o nome da empresa para um slug candidato (citext unique no DB). */
 function slugify(name: string): string {
@@ -44,6 +46,21 @@ export async function ensureTenantForUser(
     .limit(1)
     .maybeSingle();
   if (existing) return { provisioned: false, organizationId: existing.organization_id };
+
+  // Signup iniciado a partir de um link de convite (/team/accept-invite →
+  // /signup carrega o token): entra na org convidada em vez de criar uma
+  // órfã. Token expirado/adulterado (raro — TTL de 24h) ou email divergente
+  // do payload cai no fluxo normal abaixo em vez de deixar o usuário sem
+  // conta nenhuma.
+  const inviteToken = user.user_metadata?.invite_token as string | undefined;
+  if (inviteToken) {
+    const payload = verifyInviteToken(inviteToken);
+    const userEmail = (user.email ?? "").trim().toLowerCase();
+    if (payload && payload.email.trim().toLowerCase() === userEmail) {
+      await joinOrganizationFromInvite(user.id, payload);
+      return { provisioned: false, organizationId: payload.organization_id };
+    }
+  }
 
   const orgName =
     (user.user_metadata?.org_name as string | undefined)?.trim() ||
