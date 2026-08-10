@@ -67,7 +67,7 @@ export async function provisionMemberDirect(
     email,
     password,
     email_confirm: true,
-    user_metadata: { must_change_password: true },
+    app_metadata: { must_change_password: true },
   });
 
   if (createErr || !created?.user) {

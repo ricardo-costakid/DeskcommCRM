@@ -10,11 +10,11 @@ vi.mock("@/lib/logger", () => ({
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 
-function stubSupabase(opts: { userMetadata?: Record<string, unknown> }) {
+function stubSupabase(opts: { appMetadata?: Record<string, unknown> }) {
   return {
     auth: {
       getUser: async () => ({
-        data: { user: { id: USER_ID, email: "novo@example.com", user_metadata: opts.userMetadata ?? {} } },
+        data: { user: { id: USER_ID, email: "novo@example.com", app_metadata: opts.appMetadata ?? {} } },
       }),
     },
     from: (table: string) => {
@@ -38,23 +38,23 @@ beforeEach(() => {
 });
 
 describe("loadAuthUser — must_change_password", () => {
-  it("user_metadata.must_change_password true → AuthUser.must_change_password true", async () => {
+  it("app_metadata.must_change_password true → AuthUser.must_change_password true", async () => {
     vi.mocked(createClient).mockResolvedValue(
-      stubSupabase({ userMetadata: { must_change_password: true } }) as never,
+      stubSupabase({ appMetadata: { must_change_password: true } }) as never,
     );
     const user = await loadAuthUser();
     expect(user?.must_change_password).toBe(true);
   });
 
   it("sem must_change_password no metadata → false", async () => {
-    vi.mocked(createClient).mockResolvedValue(stubSupabase({ userMetadata: {} }) as never);
+    vi.mocked(createClient).mockResolvedValue(stubSupabase({ appMetadata: {} }) as never);
     const user = await loadAuthUser();
     expect(user?.must_change_password).toBe(false);
   });
 
   it("must_change_password não-booleano no metadata (ex.: string) → false, não passa adiante o valor cru", async () => {
     vi.mocked(createClient).mockResolvedValue(
-      stubSupabase({ userMetadata: { must_change_password: "true" } }) as never,
+      stubSupabase({ appMetadata: { must_change_password: "true" } }) as never,
     );
     const user = await loadAuthUser();
     expect(user?.must_change_password).toBe(false);

@@ -10,7 +10,7 @@ import { completeForcedPasswordChange } from "@/app/actions/auth/completeForcedP
 /**
  * Troca de senha obrigatória no primeiro login de membro cadastrado direto
  * por um admin (senha temporária). Ao concluir, recarrega a página — o
- * layout server-side relê user_metadata.must_change_password (agora false)
+ * layout server-side relê app_metadata.must_change_password (agora false)
  * e o gate some. Mesmo mecanismo de MfaEnrollModal.
  */
 export function ForcedPasswordChangeModal() {
@@ -33,6 +33,10 @@ export function ForcedPasswordChangeModal() {
         setError("A nova senha precisa ser diferente da temporária.");
       } else if (res.error === "session_expired") {
         setError("Sessão expirada — recarregue a página e faça login novamente.");
+      } else if (res.error === "metadata_clear_failed") {
+        setError(
+          "Sua senha foi alterada, mas houve um erro ao concluir o processo. Contate um administrador — não tente cadastrar a mesma senha de novo.",
+        );
       } else {
         setError("Não foi possível trocar a senha. Tente novamente.");
       }

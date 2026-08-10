@@ -18,15 +18,17 @@ function stubSupabase(opts: { updateUserError?: { message: string } | null }) {
   return {
     auth: {
       getUser: async () => ({
-        data: { user: { id: USER_ID, user_metadata: { must_change_password: true } } },
+        data: { user: { id: USER_ID, app_metadata: { must_change_password: true } } },
       }),
       updateUser: vi.fn(async () => ({ error: opts.updateUserError ?? null })),
     },
   };
 }
 
-function stubAdmin() {
-  return { auth: { admin: { updateUserById: vi.fn(async () => ({ error: null })) } } };
+function stubAdmin(opts: { updateUserByIdError?: { message: string } | null } = {}) {
+  return {
+    auth: { admin: { updateUserById: vi.fn(async () => ({ error: opts.updateUserByIdError ?? null })) } },
+  };
 }
 
 beforeEach(() => {
@@ -60,12 +62,31 @@ describe("completeForcedPasswordChange", () => {
     expect(res).toEqual({ ok: true });
     expect(supabase.auth.updateUser).toHaveBeenCalledWith({ password: "novaSenhaForte1" });
     expect(admin.auth.admin.updateUserById).toHaveBeenCalledWith(USER_ID, {
-      user_metadata: { must_change_password: false },
+      app_metadata: { must_change_password: false },
     });
     expect(audit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "auth.forced_password_change_completed", actorUserId: USER_ID }),
     );
     expect(JSON.stringify(vi.mocked(audit).mock.calls[0]![0])).not.toContain("novaSenhaForte1");
+  });
+
+  it("senha trocada mas limpeza de app_metadata falha → metadata_clear_failed, sem audit (ação não completou)", async () => {
+    const supabase = stubSupabase({});
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+    const admin = stubAdmin({ updateUserByIdError: { message: "admin update failed" } });
+    vi.mocked(createAdminClient).mockReturnValue(admin as never);
+
+    const res = await completeForcedPasswordChange({
+      password: "novaSenhaForte1",
+      password_confirm: "novaSenhaForte1",
+    });
+
+    expect(res).toEqual({ ok: false, error: "metadata_clear_failed" });
+    expect(supabase.auth.updateUser).toHaveBeenCalledWith({ password: "novaSenhaForte1" });
+    expect(admin.auth.admin.updateUserById).toHaveBeenCalledWith(USER_ID, {
+      app_metadata: { must_change_password: false },
+    });
+    expect(audit).not.toHaveBeenCalled();
   });
 
   it("mesma senha da temporária (GoTrue recusa) → same_password", async () => {

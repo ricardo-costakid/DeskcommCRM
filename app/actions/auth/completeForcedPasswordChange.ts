@@ -17,7 +17,12 @@ export type CompleteForcedPasswordChangeResult =
   | { ok: true }
   | {
       ok: false;
-      error: "validation_error" | "session_expired" | "same_password" | "update_failed";
+      error:
+        | "validation_error"
+        | "session_expired"
+        | "same_password"
+        | "update_failed"
+        | "metadata_clear_failed";
       details?: Record<string, unknown>;
     };
 
@@ -48,15 +53,28 @@ export async function completeForcedPasswordChange(
     return { ok: false, error: "update_failed" };
   }
 
-  // A senha já foi trocada com sucesso acima — se só a limpeza da flag
-  // falhar, não travamos o usuário atrás do gate por causa disso (mesmo
-  // espírito de audit(): fire-and-forget não bloqueia a mutação principal).
+  // A senha já foi trocada com sucesso acima. `must_change_password` mora em
+  // app_metadata (não user_metadata) de propósito: app_metadata só é
+  // gravável pelo client admin (service role), então um membro provisionado
+  // não consegue limpar a própria flag via updateUser({ data }) — que só
+  // escreve user_metadata, por design do GoTrue. Isso significa que não dá
+  // pra fazer as duas mudanças (senha + flag) numa chamada atômica só:
+  // precisa ser essa segunda chamada, com o admin client.
+  //
+  // Por isso, ao contrário de um fire-and-forget comum, uma falha aqui NÃO
+  // pode virar `ok: true` silencioso: se cair nisso, o layout server-side
+  // relê app_metadata.must_change_password (ainda true) e o gate reaparece
+  // — mas a senha já mudou, então uma nova tentativa com a "mesma" senha
+  // agora esbarra em same_password e trava o usuário sem saída de
+  // self-service. Por isso devolvemos um erro distinto (metadata_clear_failed)
+  // e não emitimos o audit de conclusão — a ação não terminou de fato.
   const admin = createAdminClient();
   const { error: metaErr } = await admin.auth.admin.updateUserById(user.id, {
-    user_metadata: { ...user.user_metadata, must_change_password: false },
+    app_metadata: { ...user.app_metadata, must_change_password: false },
   });
   if (metaErr) {
     console.error("[auth] falha ao limpar must_change_password", metaErr.message);
+    return { ok: false, error: "metadata_clear_failed" };
   }
 
   await audit({

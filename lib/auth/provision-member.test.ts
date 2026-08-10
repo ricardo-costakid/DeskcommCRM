@@ -76,7 +76,7 @@ describe("provisionMemberDirect", () => {
       email: "novo@example.com",
       password: "TempPass1234567",
       email_confirm: true,
-      user_metadata: { must_change_password: true },
+      app_metadata: { must_change_password: true },
     });
     expect(linkUserToOrganization).toHaveBeenCalledWith("new-user-1", {
       organizationId: ORG_ID,

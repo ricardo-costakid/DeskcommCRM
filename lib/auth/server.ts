@@ -100,7 +100,7 @@ export async function loadAuthUser(): Promise<AuthUser | null> {
 
   const fullName = (user.user_metadata?.full_name as string | undefined) ?? null;
   const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
-  const mustChangePassword = user.user_metadata?.must_change_password === true;
+  const mustChangePassword = user.app_metadata?.must_change_password === true;
 
   return {
     id: user.id,
