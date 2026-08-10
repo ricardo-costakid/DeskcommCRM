@@ -51,7 +51,7 @@ async function deleteAuthUserByEmail(email: string): Promise<void> {
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
 test.describe("cadastro direto de membro (tela Equipe)", () => {
-  const creds = lerCreds();
+  let creds = lerCreds();
   let orgId: string;
 
   test.beforeAll(async () => {
@@ -74,7 +74,7 @@ test.describe("cadastro direto de membro (tela Equipe)", () => {
     const email = uniqueEmail("provision");
     await deleteAuthUserByEmail(email);
 
-    await loginComoAdmin(page, creds);
+    creds = await loginComoAdmin(page, creds);
     const res = await page.request.post("/api/v1/team/members", {
       data: { members: [{ email, role: "agent" }] },
     });
@@ -117,7 +117,7 @@ test.describe("cadastro direto de membro (tela Equipe)", () => {
   });
 
   test("2. already_member: cadastrar quem já é membro ativo desta org", async ({ page }) => {
-    await loginComoAdmin(page, creds);
+    creds = await loginComoAdmin(page, creds);
     const existingEmail = creds.users.agent?.email ?? creds.users.admin!.email;
     const res = await page.request.post("/api/v1/team/members", {
       data: { members: [{ email: existingEmail, role: "agent" }] },
@@ -148,7 +148,7 @@ test.describe("cadastro direto de membro (tela Equipe)", () => {
       revoked_at: new Date().toISOString(),
     });
 
-    await loginComoAdmin(page, creds);
+    creds = await loginComoAdmin(page, creds);
     const res = await page.request.post("/api/v1/team/members", {
       data: { members: [{ email, role: "agent" }] },
     });
