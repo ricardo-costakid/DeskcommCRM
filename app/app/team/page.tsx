@@ -26,7 +26,7 @@ export default async function TeamPage() {
         </div>
         {isAdmin ? (
           <Button asChild>
-            <Link href="/app/team/invite">Convidar membros</Link>
+            <Link href="/app/team/invite">Cadastrar membro</Link>
           </Button>
         ) : null}
       </header>

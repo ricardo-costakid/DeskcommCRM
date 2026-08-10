@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
-import { InviteForm } from "./_components/InviteForm";
+import { RegisterMemberForm } from "./_components/RegisterMemberForm";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +16,13 @@ export default async function TeamInvitePage() {
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Convidar membros</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Cadastrar membro</h1>
         <p className="text-sm text-muted-foreground">
-          Cole até 20 emails (um por linha) e escolha a role compartilhada.
+          Cole até 20 emails (um por linha) e escolha a role compartilhada. O membro nasce ativo, com
+          senha temporária — sem convite por e-mail.
         </p>
       </header>
-      <InviteForm />
+      <RegisterMemberForm />
     </div>
   );
 }
