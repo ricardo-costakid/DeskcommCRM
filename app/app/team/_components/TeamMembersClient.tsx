@@ -70,7 +70,6 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
             <TableRow>
               <TableHead>Membro</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
               <TableHead>Última atividade</TableHead>
               {canManage ? <TableHead className="w-[80px]" /> : null}
             </TableRow>
@@ -108,13 +107,6 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
                     </Select>
                   ) : (
                     <Badge variant="secondary">{m.role}</Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {m.accepted_at ? (
-                    <Badge variant="default">Aceito</Badge>
-                  ) : (
-                    <Badge variant="outline">Pendente</Badge>
                   )}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
