@@ -23,6 +23,19 @@ export const inviteMemberSchema = z.object({
 });
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
 
+export const provisionMembersSchema = z.object({
+  members: z
+    .array(
+      z.object({
+        email: z.string().email(),
+        role: z.enum(ROLES),
+      }),
+    )
+    .min(1)
+    .max(20),
+});
+export type ProvisionMembersInput = z.infer<typeof provisionMembersSchema>;
+
 export const acceptInviteSchema = z.object({
   token: z.string().min(20),
 });
