@@ -57,6 +57,8 @@ export interface AuthUser {
   full_name: string | null;
   avatar_url: string | null;
   is_platform_admin: boolean;
+  /** Opcional — evita quebrar fixtures de teste existentes (mesmo padrão de ActiveOrg.visibility_mode). */
+  must_change_password?: boolean;
   organizations: UserOrgMembership[];
 }
 
