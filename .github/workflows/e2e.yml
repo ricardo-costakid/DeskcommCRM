@@ -124,7 +124,8 @@ jobs:
             rbac-roles.spec.ts inbox-scope.spec.ts reset-password-mfa.spec.ts \
             degradacao-silenciosa.spec.ts vps-webhook-outbound-ssrf.spec.ts \
             kanban-owner-filter.spec.ts queue-assign.spec.ts \
-            risk-radar.spec.ts invite-lifecycle.spec.ts system-update.spec.ts
+            risk-radar.spec.ts invite-lifecycle.spec.ts direct-member-provisioning.spec.ts \
+            system-update.spec.ts
         env:
           INTERNAL_SECRET: ci-placeholder-nao-e-segredo
           CPF_ENCRYPTION_KEY: ci-placeholder-nao-e-segredo

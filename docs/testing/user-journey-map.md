@@ -100,12 +100,12 @@ MFA obrigatório pra admin logo após o wizard (`MfaEnrollGate`).
 | J4.20 | Arquivar funil que é destino de formulário/automação | recusa NOMEANDO a fonte ou a regra (coberto por unit; `webhook_sources` cascateia) |
 | J4.21 | Lista de funis como `agent` | vê a lista e abre o quadro, sem nenhum controle de escrita (executado 2026-08-03) |
 
-## J5 — Time: convites e atuação de atendentes `[P0]` (convite) / `[P1]` (rotina)
+## J5 — Time: cadastro direto de membro e atuação de atendentes `[P0]` (cadastro) / `[P1]` (rotina)
 
 | # | Caso | Expectativa |
 |---|------|-------------|
-| J5.1 | Admin convida atendente pela UI (sem Resend) | UI diz a verdade + accept_url copiável |
-| J5.2 | Convidado abre link, cria sessão, aceita | vira membro agent, cai no inbox |
+| J5.1 | Admin cadastra e-mail de atendente direto pela UI (sem link, sem Resend) | membro nasce **ativo** na hora; senha temporária gerada pelo servidor é exibida uma única vez, copiável · `tests/e2e/direct-member-provisioning.spec.ts` |
+| J5.2 | Membro loga com a senha temporária | `MustChangePasswordGate` bloqueia o app até trocar a senha; após trocar, cai no inbox normalmente · `tests/e2e/direct-member-provisioning.spec.ts` |
 | J5.3 | Atendente vê APENAS fila + suas conversas | escopo RLS na prática |
 | J5.4 | Atendente dá claim numa conversa da fila | claim ok; 2º atendente levando 409 amigável |
 | J5.5 | Transferir conversa pra colega | imediata, contador de não-lidas zera pro novo dono |
