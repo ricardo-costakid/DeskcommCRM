@@ -204,4 +204,5 @@ export type AuditAction =
   | "followup.scheduled"
   | "followup.cancelled"
   | "lead.reactivation_proposed"
-  | "member.provisioned";
+  | "member.provisioned"
+  | "auth.forced_password_change_completed";
