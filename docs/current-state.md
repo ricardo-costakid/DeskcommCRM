@@ -106,11 +106,23 @@ o contrato de governança para agentes de IA externos.
 MCP público · flywheel de auto-aprimoramento · templates por nicho (clínica,
 imobiliária, infoproduto, serviços) · VTEX e Shopify via adapter · identity probabilística.
 
-### Dois achados de produto registrados e não endereçados
+### Três achados de produto registrados e não endereçados
 
 Vêm do `HANDOFF-harness-evolution.md`, anotados como "não são desta feature":
 **transbordo de layout a 390px em qualquer tela** e **não existe caminho de criação de
 funil** (só de etapas). O primeiro é bug de primeira impressão em mobile.
+
+**Adição (2026-08-10, branch `worktree-cadastro-direto-membro`):** o cadastro direto de
+membro (substitui o convite por e-mail na tela Equipe) removeu, sem querer, o único caminho
+que existia para reativar um membro revogado — antes, reconvidar por e-mail reativava a
+membership; agora `provisionMemberDirect` recusa com uma mensagem que diz explicitamente
+que não há ação de reativação na tela ("Não existe hoje uma ação de reativação na tela
+Equipe — cadastrar de novo não resolve, porque o e-mail já tem conta"). A lógica de
+reativação (`linkUserToOrganization`) já existe e é usada pelo próprio fluxo de convite —
+decisão consciente de não conectar os dois neste branch, registrada aqui em vez de em issue
+do GitHub (`gh` CLI indisponível no ambiente da sessão que fez a mudança). Ver
+`lib/auth/provision-member.ts` (mensagem de erro `revoked_member`) e o achado #3 da revisão
+final de branch em `.superpowers/sdd/2026-08-09-cadastro-direto-membro/progress.md`.
 
 ---
 
