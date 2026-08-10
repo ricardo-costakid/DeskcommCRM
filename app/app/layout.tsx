@@ -5,6 +5,7 @@ import { DEFAULT_VISIBILITY_MODE, type VisibilityMode } from "@/lib/auth/types";
 import { AuthProvider } from "@/hooks/auth/AuthProvider";
 import { AppShell } from "./_components/AppShell";
 import { MfaEnrollGate } from "@/components/auth/MfaEnrollGate";
+import { MustChangePasswordGate } from "@/components/auth/MustChangePasswordGate";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   IMPERSONATE_COOKIE_NAME,
@@ -70,18 +71,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const enrolled = await isMfaEnrolled();
   const needsMfaGate = requiresMfa(activeOrg?.role, user.is_platform_admin);
   const shell = <AppShell sidebarCollapsed={collapsed}>{children}</AppShell>;
+  // Gate always mounted for MFA-required roles; it latches the blocking
+  // decision client-side so the enroll Server Action's revalidation
+  // can't tear down the recovery-codes screen mid-flow.
+  const gatedByMfa = needsMfaGate ? <MfaEnrollGate enrolled={enrolled}>{shell}</MfaEnrollGate> : shell;
 
   return (
     <AuthProvider user={user} activeOrg={activeOrg}>
       <ImpersonateBanner impersonating={impersonating} />
-      {needsMfaGate ? (
-        // Gate always mounted for MFA-required roles; it latches the blocking
-        // decision client-side so the enroll Server Action's revalidation
-        // can't tear down the recovery-codes screen mid-flow.
-        <MfaEnrollGate enrolled={enrolled}>{shell}</MfaEnrollGate>
-      ) : (
-        shell
-      )}
+      {/* Senha primeiro, MFA depois — trocar senha exige menos contexto. */}
+      <MustChangePasswordGate mustChangePassword={user.must_change_password === true}>
+        {gatedByMfa}
+      </MustChangePasswordGate>
     </AuthProvider>
   );
 }
