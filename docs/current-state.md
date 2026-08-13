@@ -124,6 +124,30 @@ do GitHub (`gh` CLI indisponível no ambiente da sessão que fez a mudança). Ve
 `lib/auth/provision-member.ts` (mensagem de erro `revoked_member`) e o achado #3 da revisão
 final de branch em `.superpowers/sdd/2026-08-09-cadastro-direto-membro/progress.md`.
 
+**Adição (2026-08-12, main): campos Nome/Função em membro — implementado, NÃO aplicado
+nem provado visualmente.** Migration `0107_membro_nome_e_funcao` (`user_organizations.department`,
+CHECK `psicologo`/`assistente_social`/`administrativo`) + apêndice no `baseline.sql` + linha
+no MANIFEST + `lib/database.types.ts` atualizado à mão, todos escritos mas **nunca aplicados
+num Postgres real** — `SUPABASE_DB_URL` vazio em `.env.local` e sem Docker/Podman disponíveis
+no ambiente desta sessão (mesmo bloqueio de infra do achado do parágrafo acima). `pnpm test:db`
+não rodou. Código de app (`RegisterMemberForm.tsx` redesenhado em linhas Email+Nome+Função,
+novo endpoint `PATCH /api/v1/team/[user_id]/department`, `TeamMembersClient.tsx` com diálogo
+"Editar função", `ReassignDialog.tsx` mostrando nome+função) — `pnpm typecheck`/`pnpm lint`/
+`pnpm test:unit` verdes (os 6 arquivos de teste tocados/criados: 25/25; as 13 falhas do
+`test:unit` completo são pré-existentes, mesma causa raiz de env vars, em arquivos não
+tocados por esta mudança). **QA visual (doutrina do `CLAUDE.md`, DoD item 12) NÃO foi feita**
+— nenhuma tela foi provada dirigindo o browser contra um ambiente fresco. Spec novo
+`tests/e2e/register-member-form-ui.spec.ts` (dirige a tela de verdade — Email+Nome+Função por
+linha, inclusive o botão "+ Adicionar linha" com 2 pessoas distintas) escrito e verificado
+só estaticamente (`tsc`/`eslint` limpos; `playwright test --list` não completou — mesmo
+bloqueio de `SUPABASE_DB_URL`/Docker, confirmado idêntico no spec irmão já commitado
+`direct-member-provisioning.spec.ts` quando testado nas mesmas condições, então não é defeito
+do arquivo novo). **NUNCA EXECUTADO contra Supabase local real.** Retomar quando houver
+ambiente com Docker/DB disponível (provavelmente direto no `crm-madre` real) — aplicar a
+migration, rodar `pnpm test:db`, rodar o spec novo e os specs afetados
+(`direct-member-provisioning.spec.ts`), e fazer a prova visual doutrinária antes de considerar
+a feature pronta.
+
 ---
 
 ## 4. O que está quebrado ou frágil — CONFIRMADO
