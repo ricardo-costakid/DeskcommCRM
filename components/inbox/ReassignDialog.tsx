@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useTransferConversation } from "@/hooks/inbox/useTransferConversation";
+import { DEPARTMENT_LABEL, type Department } from "@/lib/schemas/team";
 
 interface Props {
   conversationId: string;
@@ -81,7 +82,10 @@ export function ReassignDialog({ conversationId, open, onOpenChange }: Props) {
                   <SelectItem key={m.user_id} value={m.user_id}>
                     {m.full_name ?? `Atendente ${m.user_id.slice(0, 8)}`}
                     <span className="ml-1 text-muted-foreground">
-                      · {ROLE_LABEL[m.role] ?? m.role}
+                      ·{" "}
+                      {m.department
+                        ? DEPARTMENT_LABEL[m.department as Department]
+                        : (ROLE_LABEL[m.role] ?? m.role)}
                     </span>
                   </SelectItem>
                 ))}

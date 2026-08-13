@@ -9137,3 +9137,25 @@ update public.ai_agents a
  where a.id = i.agent_id;
 
 notify pgrst, 'reload schema';
+
+-- ---- membro: nome (reaproveita user_metadata.full_name) e função/departamento (migration 0107) ----
+-- department é dado por-vínculo (varia por org), então não cabe em
+-- auth.users.user_metadata (global ao usuário) — coluna em user_organizations.
+-- Nullable: membros cadastrados antes desta migration ficam null até edição.
+alter table public.user_organizations
+  add column if not exists department text;
+
+alter table public.user_organizations
+  drop constraint if exists user_organizations_department_check;
+
+alter table public.user_organizations
+  add constraint user_organizations_department_check
+  check (
+    department is null
+    or department = any (array['psicologo', 'assistente_social', 'administrativo'])
+  );
+
+comment on column public.user_organizations.department is
+  'Função/Departamento do membro dentro do tenant (psicologo | assistente_social | administrativo). Distinto de "role" (RBAC: viewer/agent/manager/admin). Nullable — preenchido no cadastro direto ou via edição posterior.';
+
+notify pgrst, 'reload schema';

@@ -29,7 +29,13 @@ describe("provisionMemberDirect", () => {
 
     const res = await provisionMemberDirect(
       ACTOR_ID,
-      { email: "ativo@example.com", role: "agent", organizationId: ORG_ID },
+      {
+        email: "ativo@example.com",
+        role: "agent",
+        fullName: "Ativa Exemplo",
+        department: "administrativo",
+        organizationId: ORG_ID,
+      },
       map,
     );
 
@@ -49,7 +55,13 @@ describe("provisionMemberDirect", () => {
 
     const res = await provisionMemberDirect(
       ACTOR_ID,
-      { email: "revogado@example.com", role: "agent", organizationId: ORG_ID },
+      {
+        email: "revogado@example.com",
+        role: "agent",
+        fullName: "Revogada Exemplo",
+        department: "administrativo",
+        organizationId: ORG_ID,
+      },
       map,
     );
 
@@ -67,7 +79,13 @@ describe("provisionMemberDirect", () => {
 
     const res = await provisionMemberDirect(
       ACTOR_ID,
-      { email: "novo@example.com", role: "manager", organizationId: ORG_ID },
+      {
+        email: "novo@example.com",
+        role: "manager",
+        fullName: "Nova Pessoa",
+        department: "psicologo",
+        organizationId: ORG_ID,
+      },
       new Map(),
     );
 
@@ -77,10 +95,12 @@ describe("provisionMemberDirect", () => {
       password: "TempPass1234567",
       email_confirm: true,
       app_metadata: { must_change_password: true },
+      user_metadata: { full_name: "Nova Pessoa" },
     });
     expect(linkUserToOrganization).toHaveBeenCalledWith("new-user-1", {
       organizationId: ORG_ID,
       role: "manager",
+      department: "psicologo",
       invitedBy: ACTOR_ID,
     });
     expect(audit).toHaveBeenCalledWith({
@@ -89,7 +109,7 @@ describe("provisionMemberDirect", () => {
       organizationId: ORG_ID,
       resourceType: "membership",
       resourceId: "m-1",
-      metadata: { role: "manager" },
+      metadata: { role: "manager", department: "psicologo" },
     });
     expect(JSON.stringify(vi.mocked(audit).mock.calls[0]![0])).not.toContain("TempPass1234567");
   });
@@ -103,7 +123,13 @@ describe("provisionMemberDirect", () => {
 
     const res = await provisionMemberDirect(
       ACTOR_ID,
-      { email: "outraorg@example.com", role: "agent", organizationId: ORG_ID },
+      {
+        email: "outraorg@example.com",
+        role: "agent",
+        fullName: "Outra Org",
+        department: "administrativo",
+        organizationId: ORG_ID,
+      },
       new Map(),
     );
 
@@ -119,7 +145,13 @@ describe("provisionMemberDirect", () => {
 
     const res = await provisionMemberDirect(
       ACTOR_ID,
-      { email: "falha@example.com", role: "agent", organizationId: ORG_ID },
+      {
+        email: "falha@example.com",
+        role: "agent",
+        fullName: "Falha Exemplo",
+        department: "administrativo",
+        organizationId: ORG_ID,
+      },
       new Map(),
     );
 

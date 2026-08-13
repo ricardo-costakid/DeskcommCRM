@@ -76,7 +76,11 @@ test.describe("cadastro direto de membro (tela Equipe)", () => {
 
     creds = await loginComoAdmin(page, creds);
     const res = await page.request.post("/api/v1/team/members", {
-      data: { members: [{ email, role: "agent" }] },
+      data: {
+        members: [
+          { email, role: "agent", full_name: "Provision Teste", department: "administrativo" },
+        ],
+      },
     });
     expect(res.status(), await res.text()).toBe(201);
     const json = (await res.json()) as {
@@ -120,7 +124,11 @@ test.describe("cadastro direto de membro (tela Equipe)", () => {
     creds = await loginComoAdmin(page, creds);
     const existingEmail = creds.users.agent?.email ?? creds.users.admin!.email;
     const res = await page.request.post("/api/v1/team/members", {
-      data: { members: [{ email: existingEmail, role: "agent" }] },
+      data: {
+        members: [
+          { email: existingEmail, role: "agent", full_name: "Já Membro", department: "administrativo" },
+        ],
+      },
     });
     expect(res.status()).toBe(201);
     const json = (await res.json()) as {
@@ -150,7 +158,11 @@ test.describe("cadastro direto de membro (tela Equipe)", () => {
 
     creds = await loginComoAdmin(page, creds);
     const res = await page.request.post("/api/v1/team/members", {
-      data: { members: [{ email, role: "agent" }] },
+      data: {
+        members: [
+          { email, role: "agent", full_name: "Revoked Teste", department: "administrativo" },
+        ],
+      },
     });
     expect(res.status()).toBe(201);
     const json = (await res.json()) as {

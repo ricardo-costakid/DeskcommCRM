@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { toast } from "sonner";
 
 import { useProvisionMembers, type ProvisionMemberResultDto } from "@/hooks/team/useProvisionMembers";
 import { copyToClipboard } from "@/lib/clipboard";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -14,36 +14,79 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ROLES, type Role } from "@/lib/schemas/team";
+import { DEPARTMENT_LABEL, DEPARTMENTS, ROLES, type Department, type Role } from "@/lib/schemas/team";
+import { Trash } from "@/lib/ui/icons";
+
+const MAX_MEMBERS = 20;
+
+interface MemberRow {
+  key: string;
+  email: string;
+  fullName: string;
+  department: Department | "";
+}
+
+function emptyRow(key: string): MemberRow {
+  return { key, email: "", fullName: "", department: "" };
+}
 
 export function RegisterMemberForm() {
-  const [emailsRaw, setEmailsRaw] = useState("");
+  const makeKey = useId();
+  const [rowCount, setRowCount] = useState(1);
+  const [rows, setRows] = useState<MemberRow[]>([emptyRow(`${makeKey}-0`)]);
   const [role, setRole] = useState<Role>("agent");
   const [results, setResults] = useState<ProvisionMemberResultDto[] | null>(null);
   const provision = useProvisionMembers();
 
+  const updateRow = (key: string, patch: Partial<MemberRow>) => {
+    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  };
+
+  const addRow = () => {
+    if (rows.length >= MAX_MEMBERS) return;
+    const next = rowCount;
+    setRowCount(next + 1);
+    setRows((prev) => [...prev, emptyRow(`${makeKey}-${next}`)]);
+  };
+
+  const removeRow = (key: string) => {
+    setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.key !== key) : prev));
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emails = emailsRaw
-      .split(/[\n,;]/)
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-    const unique = Array.from(new Set(emails));
-    if (unique.length === 0) {
-      toast.error("Adicione ao menos um email.");
+
+    const trimmed = rows.map((r) => ({
+      ...r,
+      email: r.email.trim().toLowerCase(),
+      fullName: r.fullName.trim(),
+    }));
+
+    if (trimmed.some((r) => !r.email || !r.fullName || !r.department)) {
+      toast.error("Preencha email, nome e função em todas as linhas.");
       return;
     }
-    if (unique.length > 20) {
-      toast.error("Máximo 20 emails por cadastro.");
+    const emails = trimmed.map((r) => r.email);
+    if (new Set(emails).size !== emails.length) {
+      toast.error("Emails duplicados na lista.");
       return;
     }
+
     try {
-      const res = await provision.mutateAsync({ members: unique.map((email) => ({ email, role })) });
+      const res = await provision.mutateAsync({
+        members: trimmed.map((r) => ({
+          email: r.email,
+          role,
+          full_name: r.fullName,
+          department: r.department as Department,
+        })),
+      });
       setResults(res.data.results);
       const okCount = res.data.results.filter((r) => r.ok).length;
       const koCount = res.data.results.length - okCount;
       toast.success(`${okCount} membro(s) cadastrado(s)${koCount > 0 ? `, ${koCount} falha(s).` : "."}`);
-      setEmailsRaw("");
+      setRows([emptyRow(`${makeKey}-${rowCount}`)]);
+      setRowCount(rowCount + 1);
     } catch {
       /* showApiError handled */
     }
@@ -53,22 +96,12 @@ export function RegisterMemberForm() {
   const failed = results?.filter((r) => !r.ok) ?? [];
 
   return (
-    <div className="grid gap-6 md:grid-cols-[1fr,2fr]">
+    <div className="grid gap-6 md:grid-cols-[3fr,2fr]">
       <form onSubmit={onSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="emails">Emails</Label>
-          <Textarea
-            id="emails"
-            value={emailsRaw}
-            onChange={(e) => setEmailsRaw(e.target.value)}
-            rows={8}
-            placeholder={"alice@empresa.com\nbob@empresa.com"}
-          />
-        </div>
         <div className="space-y-2">
           <Label htmlFor="role">Role</Label>
           <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-            <SelectTrigger id="role">
+            <SelectTrigger id="role" className="w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -79,7 +112,77 @@ export function RegisterMemberForm() {
               ))}
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">Compartilhada por todos os membros deste cadastro.</p>
         </div>
+
+        <div className="space-y-3">
+          {rows.map((row, idx) => (
+            <div
+              key={row.key}
+              data-testid={`member-row-${idx}`}
+              className="grid grid-cols-[2fr,2fr,1.4fr,auto] items-end gap-2 rounded-md border p-3"
+            >
+              <div className="space-y-1">
+                <Label htmlFor={`email-${row.key}`}>Email</Label>
+                <Input
+                  id={`email-${row.key}`}
+                  type="email"
+                  value={row.email}
+                  onChange={(e) => updateRow(row.key, { email: e.target.value })}
+                  placeholder="pessoa@empresa.com"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`name-${row.key}`}>Nome</Label>
+                <Input
+                  id={`name-${row.key}`}
+                  value={row.fullName}
+                  onChange={(e) => updateRow(row.key, { fullName: e.target.value })}
+                  maxLength={120}
+                  placeholder="Nome completo"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`department-${row.key}`}>Função</Label>
+                <Select
+                  value={row.department}
+                  onValueChange={(v) => updateRow(row.key, { department: v as Department })}
+                >
+                  <SelectTrigger id={`department-${row.key}`}>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENTS.map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {DEPARTMENT_LABEL[d]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Remover linha ${idx + 1}`}
+                disabled={rows.length <= 1}
+                onClick={() => removeRow(row.key)}
+              >
+                <Trash size={18} />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <Button type="button" variant="outline" onClick={addRow} disabled={rows.length >= MAX_MEMBERS}>
+            + Adicionar linha
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {rows.length}/{MAX_MEMBERS}
+          </span>
+        </div>
+
         <Button type="submit" disabled={provision.isPending}>
           {provision.isPending ? "Cadastrando…" : "Cadastrar membros"}
         </Button>

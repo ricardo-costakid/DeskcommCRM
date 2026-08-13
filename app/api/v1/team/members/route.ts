@@ -65,7 +65,13 @@ export async function POST(req: NextRequest): Promise<Response> {
   for (const m of input.members) {
     const result = await provisionMemberDirect(
       authUser.id,
-      { email: m.email, role: m.role, organizationId: activeOrg.orgId },
+      {
+        email: m.email,
+        role: m.role,
+        fullName: m.full_name,
+        department: m.department,
+        organizationId: activeOrg.orgId,
+      },
       orgMembersByEmail,
     );
     results.push(result);

@@ -5,8 +5,10 @@ import { toast } from "sonner";
 import { useTeamMembers, type TeamMember } from "@/hooks/team/useTeamMembers";
 import { useChangeRole } from "@/hooks/team/useChangeRole";
 import { useRevokeMember } from "@/hooks/team/useRevokeMember";
+import { useUpdateMemberDepartment } from "@/hooks/team/useUpdateMemberDepartment";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -36,7 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ROLES, type Role } from "@/lib/schemas/team";
+import { DEPARTMENT_LABEL, DEPARTMENTS, ROLES, type Department, type Role } from "@/lib/schemas/team";
 import { DotsThree } from "@/lib/ui/icons";
 
 interface Props {
@@ -48,8 +50,11 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
   const { data, isLoading, isError } = useTeamMembers();
   const changeRole = useChangeRole();
   const revoke = useRevokeMember();
+  const updateDepartment = useUpdateMemberDepartment();
 
   const [revokeDialog, setRevokeDialog] = useState<TeamMember | null>(null);
+  const [departmentDialog, setDepartmentDialog] = useState<TeamMember | null>(null);
+  const [departmentDraft, setDepartmentDraft] = useState<Department | "">("");
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;
@@ -69,6 +74,7 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead>Membro</TableHead>
+              <TableHead>Função</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Última atividade</TableHead>
               {canManage ? <TableHead className="w-[80px]" /> : null}
@@ -82,6 +88,13 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
                   {m.email ? (
                     <div className="text-xs text-muted-foreground">{m.email}</div>
                   ) : null}
+                </TableCell>
+                <TableCell className="text-sm">
+                  {m.department ? (
+                    DEPARTMENT_LABEL[m.department as Department] ?? m.department
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   {canManage && m.user_id !== currentUserId ? (
@@ -124,6 +137,14 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setDepartmentDraft((m.department as Department | null) ?? "");
+                              setDepartmentDialog(m);
+                            }}
+                          >
+                            Editar função
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
                             onClick={() => setRevokeDialog(m)}
@@ -171,6 +192,60 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
               }}
             >
               Revogar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!departmentDialog}
+        onOpenChange={(o) => !o && setDepartmentDialog(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar função</DialogTitle>
+            <DialogDescription>
+              {departmentDialog?.full_name ?? departmentDialog?.email ?? departmentDialog?.user_id}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="department-edit">Função</Label>
+            <Select
+              value={departmentDraft}
+              onValueChange={(v) => setDepartmentDraft(v as Department)}
+            >
+              <SelectTrigger id="department-edit">
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                {DEPARTMENTS.map((d) => (
+                  <SelectItem key={d} value={d}>
+                    {DEPARTMENT_LABEL[d]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDepartmentDialog(null)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={!departmentDraft || updateDepartment.isPending}
+              onClick={async () => {
+                if (!departmentDialog || !departmentDraft) return;
+                try {
+                  await updateDepartment.mutateAsync({
+                    userId: departmentDialog.user_id,
+                    department: departmentDraft,
+                  });
+                  setDepartmentDialog(null);
+                } catch {
+                  /* showApiError already triggered by the hook */
+                }
+              }}
+            >
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>

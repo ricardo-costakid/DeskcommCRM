@@ -10,6 +10,19 @@ import { z } from "zod";
 export const ROLES = ["viewer", "agent", "manager", "admin"] as const;
 export type Role = (typeof ROLES)[number];
 
+/**
+ * Função/Departamento do membro dentro do tenant — distinto de `role` (RBAC).
+ * Vocabulário fechado (CHECK em user_organizations.department, migration 0107)
+ * pela lista real da equipe da Madre — manter em sincronia com o DB.
+ */
+export const DEPARTMENTS = ["psicologo", "assistente_social", "administrativo"] as const;
+export type Department = (typeof DEPARTMENTS)[number];
+export const DEPARTMENT_LABEL: Record<Department, string> = {
+  psicologo: "Psicólogo",
+  assistente_social: "Assistente Social",
+  administrativo: "Administrativo",
+};
+
 export const inviteMemberSchema = z.object({
   invitations: z
     .array(
@@ -28,6 +41,8 @@ export const provisionMembersSchema = z.object({
     .array(
       z.object({
         email: z.string().email(),
+        full_name: z.string().trim().min(1).max(120),
+        department: z.enum(DEPARTMENTS),
         role: z.enum(ROLES),
       }),
     )
@@ -35,6 +50,11 @@ export const provisionMembersSchema = z.object({
     .max(20),
 });
 export type ProvisionMembersInput = z.infer<typeof provisionMembersSchema>;
+
+export const updateMemberDepartmentSchema = z.object({
+  department: z.enum(DEPARTMENTS),
+});
+export type UpdateMemberDepartmentInput = z.infer<typeof updateMemberDepartmentSchema>;
 
 export const acceptInviteSchema = z.object({
   token: z.string().min(20),

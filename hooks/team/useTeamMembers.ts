@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/api/client";
 export interface TeamMember {
   user_id: string;
   role: string;
+  department: string | null;
   invited_at: string | null;
   accepted_at: string | null;
   revoked_at: string | null;

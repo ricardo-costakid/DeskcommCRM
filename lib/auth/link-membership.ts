@@ -17,6 +17,8 @@ export interface LinkMembershipInput {
   invitedBy?: string | null;
   /** ISO 8601. Default: agora. O fluxo de convite reconstrói a partir do exp do token. */
   invitedAt?: string;
+  /** Função/Departamento (lib/schemas/team.ts DEPARTMENTS). Opcional — só o cadastro direto envia. */
+  department?: string | null;
 }
 
 export interface LinkMembershipResult {
@@ -49,6 +51,7 @@ export async function linkUserToOrganization(
         revoked_at: null,
         accepted_at: nowIso,
         updated_at: nowIso,
+        ...(input.department !== undefined ? { department: input.department } : {}),
       })
       .eq("id", existing.id);
     if (updErr) {
@@ -66,6 +69,7 @@ export async function linkUserToOrganization(
       invited_by: input.invitedBy ?? null,
       invited_at: input.invitedAt ?? nowIso,
       accepted_at: nowIso,
+      department: input.department ?? null,
     })
     .select("id")
     .single();

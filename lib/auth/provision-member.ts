@@ -18,6 +18,8 @@ import { generateTempPassword } from "@/lib/auth/temp-password";
 export interface ProvisionMemberInput {
   email: string;
   role: string;
+  fullName: string;
+  department: string;
   organizationId: string;
 }
 
@@ -68,6 +70,7 @@ export async function provisionMemberDirect(
     password,
     email_confirm: true,
     app_metadata: { must_change_password: true },
+    user_metadata: { full_name: input.fullName },
   });
 
   if (createErr || !created?.user) {
@@ -91,6 +94,7 @@ export async function provisionMemberDirect(
   const link = await linkUserToOrganization(created.user.id, {
     organizationId: input.organizationId,
     role: input.role,
+    department: input.department,
     invitedBy: actorUserId,
   });
 
@@ -100,7 +104,7 @@ export async function provisionMemberDirect(
     organizationId: input.organizationId,
     resourceType: "membership",
     resourceId: link.membershipId,
-    metadata: { role: input.role },
+    metadata: { role: input.role, department: input.department },
   });
 
   return { email, ok: true, password };

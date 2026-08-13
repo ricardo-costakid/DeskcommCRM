@@ -5068,6 +5068,7 @@ export type Database = {
         Row: {
           accepted_at: string | null
           created_at: string
+          department: string | null
           id: string
           invited_at: string | null
           invited_by: string | null
@@ -5080,6 +5081,7 @@ export type Database = {
         Insert: {
           accepted_at?: string | null
           created_at?: string
+          department?: string | null
           id?: string
           invited_at?: string | null
           invited_by?: string | null
@@ -5092,6 +5094,7 @@ export type Database = {
         Update: {
           accepted_at?: string | null
           created_at?: string
+          department?: string | null
           id?: string
           invited_at?: string | null
           invited_by?: string | null

@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/api/client";
 export interface AssignableMember {
   user_id: string;
   role: string;
+  department: string | null;
   full_name: string | null;
 }
 

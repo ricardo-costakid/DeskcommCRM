@@ -6,7 +6,7 @@
  * seletor ausente para não-admin (canManage=false).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -48,6 +48,7 @@ function members(): TeamMember[] {
     {
       user_id: ADMIN_ID,
       role: "admin",
+      department: null,
       invited_at: null,
       accepted_at: "2026-01-01T00:00:00Z",
       revoked_at: null,
@@ -59,6 +60,7 @@ function members(): TeamMember[] {
     {
       user_id: AGENT_ID,
       role: "agent",
+      department: "psicologo",
       invited_at: null,
       accepted_at: "2026-01-02T00:00:00Z",
       revoked_at: null,
@@ -140,5 +142,45 @@ describe("TeamMembersClient — seletor de papel (G2-02)", () => {
     await waitFor(() => expect(trigger).toHaveTextContent("agent"));
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
     expect(toast.success).not.toHaveBeenCalled();
+  });
+});
+
+describe("TeamMembersClient — coluna e edição de Função/Departamento", () => {
+  it("mostra o rótulo da função quando preenchida, e travessão quando vazia", async () => {
+    renderClient();
+    const adminRow = (await screen.findByText("admin@example.com")).closest("tr")!;
+    const agentRow = screen.getByText("agente@example.com").closest("tr")!;
+
+    // Índice 1 = coluna Função (0=Membro, 1=Função, 2=Role, 3=Última atividade).
+    const adminCells = within(adminRow).getAllByRole("cell");
+    const agentCells = within(agentRow).getAllByRole("cell");
+    expect(agentCells[1]).toHaveTextContent("Psicólogo");
+    expect(adminCells[1]).toHaveTextContent("—");
+  });
+
+  it("admin edita a função pelo dropdown → PATCH /api/v1/team/[user_id]/department", async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({
+      data: { user_id: AGENT_ID, department: "administrativo" },
+    });
+
+    const user = userEvent.setup();
+    renderClient();
+    await screen.findByText("agente@example.com");
+
+    // Só a linha do agent tem dropdown de ações (a do admin logado mostra "você").
+    await user.click(screen.getByRole("button", { name: "Ações" }));
+    await user.click(await screen.findByText("Editar função"));
+
+    await user.click(screen.getByLabelText("Função"));
+    await user.click(await screen.findByRole("option", { name: "Administrativo" }));
+
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() =>
+      expect(apiClient.patch).toHaveBeenCalledWith(`/api/v1/team/${AGENT_ID}/department`, {
+        department: "administrativo",
+      }),
+    );
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Função atualizada."));
   });
 });

@@ -114,7 +114,11 @@ describe("POST /api/v1/team/members", () => {
     const { POST } = await import("@/app/api/v1/team/members/route");
     const req = new NextRequest("http://localhost/api/v1/team/members", {
       method: "POST",
-      body: JSON.stringify({ members: [{ email: "novo@example.com", role: "agent" }] }),
+      body: JSON.stringify({
+        members: [
+          { email: "novo@example.com", role: "agent", full_name: "Nova Pessoa", department: "psicologo" },
+        ],
+      }),
     });
     const res = await POST(req);
     expect(res.status).toBe(201);
@@ -124,7 +128,13 @@ describe("POST /api/v1/team/members", () => {
     expect(provisionMemberDirect).toHaveBeenCalledTimes(1);
     const [actorId, input, map] = vi.mocked(provisionMemberDirect).mock.calls[0]!;
     expect(actorId).toBe(ADMIN_ID);
-    expect(input).toEqual({ email: "novo@example.com", role: "agent", organizationId: ORG_ID });
+    expect(input).toEqual({
+      email: "novo@example.com",
+      role: "agent",
+      fullName: "Nova Pessoa",
+      department: "psicologo",
+      organizationId: ORG_ID,
+    });
     expect(map.get("ativo@example.com")).toEqual({ revokedAt: null });
     expect(map.get("revogado@example.com")).toEqual({ revokedAt: "2026-01-01T00:00:00Z" });
   });
