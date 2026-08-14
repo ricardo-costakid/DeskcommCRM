@@ -19,8 +19,8 @@ import { generateTotp } from "../tests/e2e/utils/totp";
 const envFile = fs.readFileSync(path.join(process.cwd(), ".env.local"), "utf8");
 const env: Record<string, string> = {};
 for (const line of envFile.split("\n")) {
-  const m = line.match(/^([A-Z_]+)=(.*)$/);
-  if (m) env[m[1]!] = m[2]!.replace(/^"(.*)"$/, "$1");
+  const m = line.match(/^([A-Z_]+)=(.*)\r?$/);
+  if (m) env[m[1]!] = m[2]!.replace(/^(['"])(.*)\1$/, "$2");
 }
 
 const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL!;
