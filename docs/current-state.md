@@ -148,6 +148,40 @@ migration, rodar `pnpm test:db`, rodar o spec novo e os specs afetados
 (`direct-member-provisioning.spec.ts`), e fazer a prova visual doutrinária antes de considerar
 a feature pronta.
 
+**Adição (2026-08-13, main): migration 0107 aplicada no crm-madre real; feature PROVADA e
+pronta — supera o achado acima.** Sessão retomada com `SUPABASE_DB_URL`/credenciais do
+`crm-madre` (`isnhiljjhtawyjbjdwso.supabase.co`) configuradas em `.env.local`.
+
+- **Migration aplicada e verificada direto no crm-madre real**, migration a migration (não só
+  pela tabela de tracking do CLI — `supabase_migrations.schema_migrations`, vazia porque esse
+  banco nunca foi gerenciado pelo CLI, só pelo `baseline.sql`). Diagnóstico confirmou o schema
+  já atualizado até a 0106; a 0107 era a única pendência real. `user_organizations.department`
+  (text, nullable) + CHECK confirmados por query direta pós-aplicação.
+- **`pnpm test:db` continua BLOQUEADO** — sem Docker/Podman/WSL nesta máquina. Gap de
+  infraestrutura desta sessão, não falha da feature; nenhum invariante de RLS foi exercitado
+  por essa via.
+- **5/5 specs E2E passaram contra o crm-madre real**, em produção (`next build` + `next
+  start`): `tests/e2e/direct-member-provisioning.spec.ts` (3 testes: ciclo feliz,
+  `already_member`, `revoked_member`) e `tests/e2e/register-member-form-ui.spec.ts` (2 testes,
+  dirigindo a tela de verdade — preenchimento de linha, Select de Função, botão "+ Adicionar
+  linha").
+- Rodado com fixture isolada ("E2E Test Org", 4 usuários `@deskcomm.test`, seed idempotente de
+  `scripts/seed-e2e-credentials.ts`) criada e depois limpa — não tocou dados reais
+  (`madresjrp`/`ricardocostakid`). A organização fixture ficou **órfã** no banco (vazia, sem
+  membros nem agent) porque 5 linhas de `api_audit_log` referenciam seu `organization_id` sem
+  cascade (doutrina de audit append-only, `CLAUDE.md`) — decisão consciente de preservar o
+  audit log em vez de apagar essas linhas.
+- De passagem, corrigido um bug real no parser de `.env.local` de `seed-e2e-credentials.ts`
+  (não tolerava CRLF nem aspas simples — commit `db9d218`); o mesmo padrão está duplicado em
+  outros ~52 arquivos de `scripts/`/`tests/`, não corrigidos aqui (fora de escopo).
+- **Ressalva:** nenhuma evidência visual formal foi arquivada em `.superpowers/evidence/` — o
+  Playwright só grava trace em retry (`trace: "on-first-retry"`) e os 5 testes passaram de
+  primeira, então não há trace salvo. `docs/testing/user-journey-map.md` não foi atualizado
+  nesta sessão.
+- **Conclusão:** DoD item 12 (prova pela tela via Playwright dirigindo o browser contra
+  ambiente real) satisfeito pelos specs acima. Feature nome/função de membro considerada
+  pronta.
+
 ---
 
 ## 4. O que está quebrado ou frágil — CONFIRMADO
