@@ -1789,7 +1789,19 @@ export async function runAgentTurn(
       ? openingTextOnly
       : [{ role: 'user', content: [{ type: 'text', text: openingText }, ...nativeParts] }];
 
-  // O modelo decide tools livremente dentro do teto de steps (knob AGENT_MAX_STEPS).
+  // O modelo decide tools livremente dentro do teto de steps (knob AGENT_MAX_STEPS)
+  // — EXCETO o primeiro step quando há KB ativa: a consulta ao acervo é imposta
+  // pelo runtime, não pedida ao modelo (ver forceFirstTool em run-model-call).
+  //
+  // A tool forçada é a NATIVA `search_knowledge`, nunca a `crm_search_knowledge`
+  // do catálogo MCP: só a nativa respeita o rag_similarity_threshold configurado
+  // do agente (a do catálogo tem 0.72 hardcoded) e só ela grava knowledge_searches
+  // e alimenta as citações do inbox. Medido: um chunk de resposta correta a 0.6230
+  // é descartado em silêncio pela variante MCP e entregue pela nativa.
+  //
+  // Custo: uma chamada de tool a mais por turno, inclusive em saudação pura
+  // ("oi", "bom dia"), onde a busca não serve para nada. Aceito de propósito —
+  // medir o impacto real em custo/latência médios por conversa depois de rodar.
   const turn = await runModelCall(
     pool,
     deps.llmCfg,
@@ -1802,6 +1814,9 @@ export async function runAgentTurn(
       messages: openingMessages,
       tools,
       maxSteps,
+      ...(agentConfig?.activeKbVersionId != null && 'search_knowledge' in tools
+        ? { forceFirstTool: 'search_knowledge' }
+        : {}),
       ...(agentConfig !== null
         ? {
             model: agentConfig.model,

@@ -95,6 +95,26 @@ export interface RunModelCallInput {
    * 2B) — resolvido no seam, nunca no call site. Sem ele, config da org.
    */
   llmOverride?: import('./credentials').LlmResolveOverride;
+  /**
+   * Nome da tool que o modelo é OBRIGADO a chamar no PRIMEIRO step (step 0).
+   * Do step 1 em diante o toolChoice volta a 'auto' e o modelo responde livre,
+   * já com o resultado da tool na fita.
+   *
+   * Por que existe: a instrução textual na description da tool ("use ANTES de
+   * responder dúvida factual") é sugestão, não garantia — medido no acervo do
+   * tenant, 3 de 4 perguntas factuais cuja resposta EXISTE na KB (similaridade
+   * 0.75–0.81, muito acima do limiar) foram respondidas sem nenhuma chamada de
+   * busca registrada. Forçar o primeiro step é o único ponto onde o runtime,
+   * e não o modelo, decide que a consulta acontece.
+   *
+   * Aplicado via `prepareStep` de propósito: um `toolChoice` no topo do
+   * generateText valeria para TODO step, e com stopWhen=stepCountIs(maxSteps)
+   * o modelo repetiria a mesma tool até estourar o teto sem nunca responder.
+   *
+   * Só o call site do turno do agente usa. Os demais (classificadores,
+   * compaction, fechamento de checkpoint) omitem e seguem inalterados.
+   */
+  forceFirstTool?: string;
 }
 
 export interface RunModelCallDeps {
@@ -173,6 +193,23 @@ export async function runModelCall(db: pg.Pool, cfg: LlmEdgeConfig, input: RunMo
     cacheTtl: cfg.cacheTtl ?? '1h',
   });
 
+  // Guard obrigatório: a tool forçada pode legitimamente não estar montada
+  // (ex.: agente sem KB ativa remove search_knowledge do ToolSet). Nomear no
+  // toolChoice uma tool ausente derruba o turno inteiro no provider — e derrubar
+  // o atendimento do cliente para exigir uma busca é troca ruim. Ausente ⇒ o
+  // turno roda como antes, sem forçar.
+  const forcedTool =
+    input.forceFirstTool !== undefined &&
+    prefix.tools !== undefined &&
+    input.forceFirstTool in prefix.tools
+      ? input.forceFirstTool
+      : null;
+  if (input.forceFirstTool !== undefined && forcedTool === null) {
+    deps.log?.warn('tool de primeiro step ausente do ToolSet — turno segue sem forçar', {
+      force_first_tool: input.forceFirstTool,
+    });
+  }
+
   const startedAt = Date.now();
   // `system` aceita SystemModelMessage (com providerOptions de cache) — igual
   // em v6 e v7 (smoke prova que o cacheControl continua virando cache_control).
@@ -182,6 +219,12 @@ export async function runModelCall(db: pg.Pool, cfg: LlmEdgeConfig, input: RunMo
     messages: input.messages,
     tools: prefix.tools,
     stopWhen: input.maxSteps === undefined ? undefined : stepCountIs(input.maxSteps),
+    ...(forcedTool !== null
+      ? {
+          prepareStep: ({ stepNumber }: { stepNumber: number }) =>
+            stepNumber === 0 ? { toolChoice: { type: 'tool' as const, toolName: forcedTool } } : {},
+        }
+      : {}),
     temperature,
     topP,
     topK,
